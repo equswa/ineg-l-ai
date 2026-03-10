@@ -4,6 +4,7 @@ import requests
 import io
 import base64
 import google.generativeai as genai
+import time
 
 # Sayfa Ayarları
 st.set_page_config(page_title="SosyalZeka AI - PRO Studio", page_icon="🚀", layout="wide")
@@ -93,41 +94,18 @@ with col_outputs:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
                             
                     with col_txt:
-                        with st.spinner('Google sistemine sızılıyor...'):
-                            if GEMINI_API_KEY == "BURAYA_GEMINI_ANAHTARINI_YAPISTIR" or GEMINI_API_KEY == "":
-                                st.error("HATA: Koda Gemini API anahtarını girmemişsiniz!")
-                            else:
-                                try:
-                                    # GOOGLE'A HANGİ MODELLERİN AÇIK OLDUĞUNU SORUYORUZ
-                                    acik_modeller = []
-                                    for m in genai.list_models():
-                                        if 'generateContent' in m.supported_generation_methods:
-                                            acik_modeller.append(m.name)
-                                    
-                                    if not acik_modeller:
-                                        st.error("Google hesabınızda hiçbir yapay zeka modeli aktif değil!")
-                                    else:
-                                        # Ekrana modelleri yazdırıyoruz ki görelim
-                                        with st.expander("🛠️ Sistem Tespiti (Açık Modeller)", expanded=False):
-                                            st.write(acik_modeller)
-                                        
-                                        # Çalışma ihtimali en yüksek modelleri arıyoruz
-                                        secilen_model = acik_modeller[0] # Varsayılan olarak ilkini al
-                                        for m in acik_modeller:
-                                            if "2.0-flash" in m or "1.5-pro" in m or "1.5-flash" in m or "vision" in m:
-                                                secilen_model = m
-                                                break
-                                                
-                                        # Model ismini temizleyip (models/ kısmını silip) motoru çalıştırıyoruz
-                                        temiz_isim = secilen_model.replace("models/", "")
-                                        st.success(f"Motor Bağlandı: {temiz_isim}")
-                                        
-                                        model = genai.GenerativeModel(temiz_isim)
-                                        res = model.generate_content([prompt, islem_goren_resim])
-                                        
-                                        st.write("---")
-                                        st.write(res.text)
-                                        st.balloons()
-                                        
-                                except Exception as e:
-                                    st.error(f"🚨 GOOGLE REDDETTİ: {e}")
+                        with st.spinner('Gemini metni yazıyor...'):
+                            try:
+                                # Sistemi yormayan, doğrudan hedefe giden kod
+                                model = genai.GenerativeModel('gemini-1.5-flash')
+                                res = model.generate_content([prompt, islem_goren_resim])
+                                
+                                st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
+                                st.write(res.text)
+                                
+                                # Limitlere takılmamak için iki fotoğraf arasında 2 saniye nefes payı
+                                time.sleep(2) 
+                            except Exception as e:
+                                st.error(f"Sistem Hatası: {e}")
+                                
+            st.balloons()
