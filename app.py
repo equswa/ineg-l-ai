@@ -94,17 +94,17 @@ with col_outputs:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
                             
                     with col_txt:
-                        with st.spinner('Gemini metni yazıyor...'):
+                        with st.spinner('Gemini 2.0 metni yazıyor...'):
                             try:
-                                # Sistemi yormayan, doğrudan hedefe giden kod
-                                model = genai.GenerativeModel('gemini-1.5-flash')
+                                # İŞTE BURASI DEĞİŞTİ: Senin hesabına özel olan en yeni modeli atadık
+                                model = genai.GenerativeModel('gemini-2.0-flash')
                                 res = model.generate_content([prompt, islem_goren_resim])
                                 
                                 st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
                                 st.write(res.text)
                                 
-                                # Limitlere takılmamak için iki fotoğraf arasında 2 saniye nefes payı
-                                time.sleep(2) 
+                                # Google'ın "Çok hızlısın" (429) dememesi için 3 saniye dinleniyoruz
+                                time.sleep(3) 
                             except Exception as e:
                                 st.error(f"Sistem Hatası: {e}")
                                 
