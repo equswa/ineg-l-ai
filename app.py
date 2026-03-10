@@ -99,33 +99,14 @@ with col_outputs:
                             if GEMINI_API_KEY == "BURAYA_GEMINI_ANAHTARINI_YAPISTIR" or GEMINI_API_KEY == "":
                                 st.error("HATA: Koda Gemini API anahtarını girmemişsiniz!")
                             else:
-                                # AKILLI MODEL SEÇİCİ (Asla Yarı Yolda Bırakmaz)
-                                denenecek_modeller = [
-                                    'gemini-1.5-pro', 
-                                    'gemini-pro-vision', 
-                                    'gemini-1.5-flash-8b', 
-                                    'models/gemini-1.5-pro-latest'
-                                ]
-                                
-                                basarili_yanit = None
-                                calisan_model = ""
-                                
-                                for m_adi in denenecek_modeller:
-                                    try:
-                                        model = genai.GenerativeModel(m_adi)
-                                        res = model.generate_content([prompt, islem_goren_resim])
-                                        basarili_yanit = res.text
-                                        calisan_model = m_adi
-                                        break # Başarılı olursa döngüden çık, diğerlerini deneme
-                                    except:
-                                        continue # Hata verirse bir sonraki modele geç
-                                
-                                if basarili_yanit:
+                                try:
+                                    # En güncel modeli doğrudan çağırıyoruz
+                                    model = genai.GenerativeModel('gemini-1.5-flash')
+                                    res = model.generate_content([prompt, islem_goren_resim])
                                     st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
-                                    st.write(basarili_yanit)
-                                    st.caption(f"*(AI Motoru: {calisan_model} ile üretildi)*")
-                                else:
-                                    st.error("HATA: Google'ın görsel okuyabilen hiçbir modeli hesabınız için aktif değil.")
-                                    st.info("Çözüm: Google AI Studio'dan yeni bir API anahtarı oluşturmayı veya projenizi bağlamayı deneyin.")
+                                    st.write(res.text)
+                                except Exception as e:
+                                    st.error(f"🚨 GOOGLE REDDETTİ: {e}")
+                                    st.info("Eğer hata 'API key not valid' veya '403' ise, anahtarı yanlış kopyalamışsındır. Eğer başka bir şeyse, lütfen o kırmızı mesajı bana gönder.")
                                 
             st.balloons()
