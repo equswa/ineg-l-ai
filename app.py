@@ -10,10 +10,14 @@ import time
 st.set_page_config(page_title="SosyalZeka AI - PRO Studio", page_icon="🚀", layout="wide")
 
 # ==========================================
-# 🔑 BEYİN ANAHTARLARI (BURAYI DOLDUR!)
+# 🔒 GÜVENLİ KASA SİSTEMİ (Şifreler kodda değil, sunucuda saklanır)
 # ==========================================
-GEMINI_API_KEY = "AIzaSyDT5lXOlntH6CM5d2RCjxBTzVTeey5ALYE" 
-HF_TOKEN = "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" 
+try:
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    HF_TOKEN = st.secrets["HF_TOKEN"]
+except KeyError:
+    st.error("HATA: Güvenli kasa (Secrets) ayarlanmamış! Lütfen Streamlit ayarlarından şifrelerinizi girin.")
+    st.stop()
 
 # Gemini Ayarları
 genai.configure(api_key=GEMINI_API_KEY)
@@ -96,14 +100,12 @@ with col_outputs:
                     with col_txt:
                         with st.spinner('Gemini 2.0 metni yazıyor...'):
                             try:
-                                # İŞTE BURASI DEĞİŞTİ: Senin hesabına özel olan en yeni modeli atadık
                                 model = genai.GenerativeModel('gemini-2.0-flash')
                                 res = model.generate_content([prompt, islem_goren_resim])
                                 
                                 st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
                                 st.write(res.text)
                                 
-                                # Google'ın "Çok hızlısın" (429) dememesi için 3 saniye dinleniyoruz
                                 time.sleep(3) 
                             except Exception as e:
                                 st.error(f"Sistem Hatası: {e}")
