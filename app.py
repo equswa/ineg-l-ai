@@ -100,7 +100,7 @@ with col_outputs:
                     with col_txt:
                         with st.spinner('Gemini 2.0 metni yazıyor...'):
                             try:
-                                model = genai.GenerativeModel('gemini-2.0-flash')
+                                model = genai.GenerativeModel('gemini-1.5-flash')
                                 res = model.generate_content([prompt, islem_goren_resim])
                                 
                                 st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
@@ -111,3 +111,4 @@ with col_outputs:
                                 st.error(f"Sistem Hatası: {e}")
                                 
             st.balloons()
+
