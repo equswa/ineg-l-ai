@@ -17,9 +17,6 @@ HF_TOKEN = "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"
 # Gemini Ayarları
 genai.configure(api_key=GEMINI_API_KEY)
 
-# HATA ÇÖZÜMÜ: Model adını Google'ın en güncel sistemine göre (-latest) ayarladık
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
-
 # Hugging Face Ayarları
 HF_API_URL = "https://router.huggingface.co/hf-inference/models/lllyasviel/sd-controlnet-canny"
 hf_headers = {"Authorization": f"Bearer {HF_TOKEN.strip()}"}
@@ -100,10 +97,25 @@ with col_outputs:
                     with col_txt:
                         with st.spinner('Gemini metni yazıyor...'):
                             try:
-                                response = model.generate_content([prompt, islem_goren_resim])
-                                st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
-                                st.write(response.text)
+                                # AKILLI MODEL SEÇİCİ (Hata engelleyici B Planı)
+                                basarili_yanit = None
+                                denenecek_modeller = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro-vision']
+                                
+                                for model_adi in denenecek_modeller:
+                                    try:
+                                        model = genai.GenerativeModel(model_adi)
+                                        res = model.generate_content([prompt, islem_goren_resim])
+                                        basarili_yanit = res.text
+                                        break  # Başarılı olursa döngüden çık
+                                    except Exception as inner_e:
+                                        continue  # Hata verirse bir sonraki modele geç
+                                
+                                if basarili_yanit:
+                                    st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
+                                    st.write(basarili_yanit)
+                                else:
+                                    st.error("Google modellerinin tümü reddetti. API anahtarınızda 'generative language' izni açık olmayabilir.")
                             except Exception as e:
-                                st.error(f"Google Yapay Zeka Bağlantı Hatası: Lütfen API anahtarınızı kontrol edin veya 5 saniye sonra tekrar deneyin. Detay: {e}")
+                                st.error(f"Sistem Hatası: {e}")
                                 
             st.balloons()
