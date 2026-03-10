@@ -11,13 +11,14 @@ st.set_page_config(page_title="SosyalZeka AI - PRO Studio", page_icon="🚀", la
 # ==========================================
 # 🔑 BEYİN ANAHTARLARI (BURAYI DOLDUR!)
 # ==========================================
-GEMINI_API_KEY = "AIzaSyDT5lXOlntH6CM5d2RCjxBTzVTeey5ALYE" # AIza... ile başlar
-HF_TOKEN = "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" # hf_... ile başlar
+GEMINI_API_KEY = "AIzaSyDT5lXOlntH6CM5d2RCjxBTzVTeey5ALYE" 
+HF_TOKEN = "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" 
 
 # Gemini Ayarları
 genai.configure(api_key=GEMINI_API_KEY)
-# Gemini'nin vizyon (görme) ve metin yazma yeteneği olan en hızlı modeli
-model = genai.GenerativeModel('gemini-1.5-flash')
+
+# HATA ÇÖZÜMÜ: Model adını Google'ın en güncel sistemine göre (-latest) ayarladık
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
 # Hugging Face Ayarları
 HF_API_URL = "https://router.huggingface.co/hf-inference/models/lllyasviel/sd-controlnet-canny"
@@ -34,7 +35,7 @@ with col_controls:
     uploaded_files = st.file_uploader("Görselleri seçin (Maks 5)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
     
     st.write("---")
-    studio_modu = st.toggle("✨ Amatör Çekimi Profesyonelleştir", value=False, help="Hugging Face ile arka planı yeniler.")
+    studio_modu = st.toggle("✨ Amatör Çekimi Profesyonelleştir", value=False)
     if studio_modu:
         ev_tarzi = st.selectbox("Ev Arka Plan Tarzı", ["Dubai Luxury Villa", "Modern Scandinavian Home", "Classic Italian Mansion"])
     
@@ -52,7 +53,6 @@ with col_outputs:
         if not uploaded_files:
             st.warning("⚠️ Lütfen önce fotoğraf yükleyin.")
         else:
-            # Yapay Zeka Promptu (Mühendislik Kısmı)
             prompt = f"""
             Sen uzman bir Sosyal Medya Yöneticisi ve Dijital Pazarlama Uzmanısın. 
             Ekteki mobilya/mekan fotoğrafını incele. 
@@ -69,19 +69,17 @@ with col_outputs:
                 with st.expander(f"📌 Görsel {i+1} İçin Hazırlanan İçerik", expanded=True):
                     col_img, col_txt = st.columns([1, 2])
                     
-                    # Orijinal resmi aç
                     image = Image.open(dosya)
                     islem_goren_resim = image
                     
                     with col_img:
                         if studio_modu:
-                            with st.spinner('Arka plan lüks ev ile değiştiriliyor...'):
-                                # Hugging Face'e gönder
+                            with st.spinner('Stüdyo motoru çalışıyor... (Eğer meşgulse orijinali kullanılacak)'):
                                 buffered = io.BytesIO()
                                 image.save(buffered, format="PNG")
                                 img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
                                 payload = {
-                                    "inputs": f"a luxury living room in a {ev_tarzi}, modern furniture, professional real estate photography, 8k",
+                                    "inputs": f"a luxury living room in a {ev_tarzi}, modern furniture, professional interior photography, 8k",
                                     "image": img_b64,
                                     "options": {"wait_for_model": True}
                                 }
@@ -91,10 +89,10 @@ with col_outputs:
                                         islem_goren_resim = Image.open(io.BytesIO(response.content))
                                         st.image(islem_goren_resim, caption=f"Stüdyo: {ev_tarzi}", use_container_width=True)
                                     else:
-                                        st.error("Stüdyo motoru meşgul, orijinal görsel kullanılıyor.")
+                                        st.warning("Stüdyo motoru uyuyor, orijinal görsel kullanıldı.")
                                         st.image(islem_goren_resim, caption="Orijinal", use_container_width=True)
                                 except:
-                                    st.error("Bağlantı hatası, orijinal görsel kullanılıyor.")
+                                    st.warning("Stüdyo bağlantısı kurulamadı, orijinal görsel kullanıldı.")
                                     st.image(islem_goren_resim, caption="Orijinal", use_container_width=True)
                         else:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
@@ -102,11 +100,10 @@ with col_outputs:
                     with col_txt:
                         with st.spinner('Gemini metni yazıyor...'):
                             try:
-                                # Gemini'ye hem resmi hem de talimatı (prompt) gönderiyoruz!
                                 response = model.generate_content([prompt, islem_goren_resim])
                                 st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
                                 st.write(response.text)
                             except Exception as e:
-                                st.error(f"Metin yazılırken bir hata oluştu: {e}")
+                                st.error(f"Google Yapay Zeka Bağlantı Hatası: Lütfen API anahtarınızı kontrol edin veya 5 saniye sonra tekrar deneyin. Detay: {e}")
                                 
             st.balloons()
