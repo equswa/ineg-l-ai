@@ -71,7 +71,7 @@ with col_outputs:
                     
                     with col_img:
                         if studio_modu:
-                            with st.spinner('Stüdyo motoru çalışıyor... (Eğer meşgulse orijinali kullanılacak)'):
+                            with st.spinner('Stüdyo motoru çalışıyor...'):
                                 buffered = io.BytesIO()
                                 image.save(buffered, format="PNG")
                                 img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
@@ -86,36 +86,29 @@ with col_outputs:
                                         islem_goren_resim = Image.open(io.BytesIO(response.content))
                                         st.image(islem_goren_resim, caption=f"Stüdyo: {ev_tarzi}", use_container_width=True)
                                     else:
-                                        st.warning("Stüdyo motoru uyuyor, orijinal görsel kullanıldı.")
+                                        st.warning("Stüdyo meşgul, orijinali kullanıldı.")
                                         st.image(islem_goren_resim, caption="Orijinal", use_container_width=True)
                                 except:
-                                    st.warning("Stüdyo bağlantısı kurulamadı, orijinal görsel kullanıldı.")
+                                    st.warning("Stüdyo bağlantı hatası, orijinali kullanıldı.")
                                     st.image(islem_goren_resim, caption="Orijinal", use_container_width=True)
                         else:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
                             
                     with col_txt:
                         with st.spinner('Gemini metni yazıyor...'):
-                            try:
-                                # AKILLI MODEL SEÇİCİ (Hata engelleyici B Planı)
-                                basarili_yanit = None
-                                denenecek_modeller = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro-vision']
-                                
-                                for model_adi in denenecek_modeller:
-                                    try:
-                                        model = genai.GenerativeModel(model_adi)
-                                        res = model.generate_content([prompt, islem_goren_resim])
-                                        basarili_yanit = res.text
-                                        break  # Başarılı olursa döngüden çık
-                                    except Exception as inner_e:
-                                        continue  # Hata verirse bir sonraki modele geç
-                                
-                                if basarili_yanit:
+                            # Anahtar boş mu diye kontrol edelim
+                            if GEMINI_API_KEY == "BURAYA_GEMINI_ANAHTARINI_YAPISTIR" or GEMINI_API_KEY == "":
+                                st.error("HATA: Koda Gemini API anahtarını girmemişsiniz!")
+                            else:
+                                try:
+                                    # En güncel ve standart modeli zorluyoruz
+                                    model = genai.GenerativeModel('gemini-1.5-flash')
+                                    res = model.generate_content([prompt, islem_goren_resim])
                                     st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
-                                    st.write(basarili_yanit)
-                                else:
-                                    st.error("Google modellerinin tümü reddetti. API anahtarınızda 'generative language' izni açık olmayabilir.")
-                            except Exception as e:
-                                st.error(f"Sistem Hatası: {e}")
+                                    st.write(res.text)
+                                except Exception as e:
+                                    # GOOGLE'IN GERÇEK HATA MESAJI BURADA ÇIKACAK
+                                    st.error(f"Google'dan Gelen Gerçek Hata Mesajı: {str(e)}")
+                                    st.info("Lütfen bu kırmızı mesajı bana kopyala veya ekran görüntüsü at. Sorunu tam buradan teşhis edeceğiz.")
                                 
             st.balloons()
