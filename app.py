@@ -3,24 +3,20 @@ from PIL import Image
 import requests
 import io
 import base64
-import google.generativeai as genai
 import time
 
 # Sayfa Ayarları
 st.set_page_config(page_title="SosyalZeka AI - PRO Studio", page_icon="🚀", layout="wide")
 
 # ==========================================
-# 🔒 GÜVENLİ KASA SİSTEMİ (Şifreler kodda değil, sunucuda saklanır)
+# 🔒 GÜVENLİ KASA SİSTEMİ
 # ==========================================
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     HF_TOKEN = st.secrets["HF_TOKEN"]
 except KeyError:
-    st.error("HATA: Güvenli kasa (Secrets) ayarlanmamış! Lütfen Streamlit ayarlarından şifrelerinizi girin.")
+    st.error("HATA: Güvenli kasa (Secrets) ayarlanmamış!")
     st.stop()
-
-# Gemini Ayarları
-genai.configure(api_key=GEMINI_API_KEY)
 
 # Hugging Face Ayarları
 HF_API_URL = "https://router.huggingface.co/hf-inference/models/lllyasviel/sd-controlnet-canny"
@@ -71,14 +67,14 @@ with col_outputs:
                 with st.expander(f"📌 Görsel {i+1} İçin Hazırlanan İçerik", expanded=True):
                     col_img, col_txt = st.columns([1, 2])
                     
-                    image = Image.open(dosya)
+                    image = Image.open(dosya).convert("RGB") # Resmi standart formata çevir
                     islem_goren_resim = image
                     
                     with col_img:
                         if studio_modu:
                             with st.spinner('Stüdyo motoru çalışıyor...'):
                                 buffered = io.BytesIO()
-                                image.save(buffered, format="PNG")
+                                image.save(buffered, format="JPEG")
                                 img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
                                 payload = {
                                     "inputs": f"a luxury living room in a {ev_tarzi}, modern furniture, professional interior photography, 8k",
@@ -88,7 +84,7 @@ with col_outputs:
                                 try:
                                     response = requests.post(HF_API_URL, headers=hf_headers, json=payload)
                                     if response.status_code == 200:
-                                        islem_goren_resim = Image.open(io.BytesIO(response.content))
+                                        islem_goren_resim = Image.open(io.BytesIO(response.content)).convert("RGB")
                                         st.image(islem_goren_resim, caption=f"Stüdyo: {ev_tarzi}", use_container_width=True)
                                     else:
                                         st.image(islem_goren_resim, caption="Orijinal", use_container_width=True)
@@ -98,17 +94,35 @@ with col_outputs:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
                             
                     with col_txt:
-                        with st.spinner('Gemini 2.0 metni yazıyor...'):
+                        with st.spinner('Google Ana Bilgisayarına Bağlanılıyor...'):
                             try:
-                                model = genai.GenerativeModel('gemini-1.5-flash')
-                                res = model.generate_content([prompt, islem_goren_resim])
+                                # Görseli Google'ın anlayacağı base64 formatına çeviriyoruz
+                                buffered = io.BytesIO()
+                                islem_goren_resim.save(buffered, format="JPEG")
+                                final_img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
                                 
-                                st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
-                                st.write(res.text)
+                                # KÜTÜPHANE YOK! DOĞRUDAN GOOGLE REST API BAĞLANTISI (Asla çökmez)
+                                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                                gemini_payload = {
+                                    "contents": [{
+                                        "parts": [
+                                            {"text": prompt},
+                                            {"inline_data": {"mime_type": "image/jpeg", "data": final_img_b64}}
+                                        ]
+                                    }]
+                                }
                                 
-                                time.sleep(3) 
+                                response = requests.post(gemini_url, json=gemini_payload)
+                                
+                                if response.status_code == 200:
+                                    sonuc_metni = response.json()['candidates'][0]['content']['parts'][0]['text']
+                                    st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
+                                    st.write(sonuc_metni)
+                                else:
+                                    st.error(f"Google API Hatası: {response.text}")
+                                
+                                time.sleep(2) 
                             except Exception as e:
                                 st.error(f"Sistem Hatası: {e}")
                                 
             st.balloons()
-
