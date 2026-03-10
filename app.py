@@ -67,7 +67,7 @@ with col_outputs:
                 with st.expander(f"📌 Görsel {i+1} İçin Hazırlanan İçerik", expanded=True):
                     col_img, col_txt = st.columns([1, 2])
                     
-                    image = Image.open(dosya).convert("RGB") # Resmi standart formata çevir
+                    image = Image.open(dosya).convert("RGB") 
                     islem_goren_resim = image
                     
                     with col_img:
@@ -94,35 +94,64 @@ with col_outputs:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
                             
                     with col_txt:
-                        with st.spinner('Google Ana Bilgisayarına Bağlanılıyor...'):
+                        with st.spinner('Google sistemine zorla giriliyor...'):
                             try:
-                                # Görseli Google'ın anlayacağı base64 formatına çeviriyoruz
+                                # 1. GOOGLE'IN LİSTESİNİ ÇEKİYORUZ
+                                list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+                                list_res = requests.get(list_url)
+                                
+                                if list_res.status_code != 200:
+                                    st.error("API Anahtarı geçersiz veya kısıtlanmış.")
+                                    st.stop()
+                                    
+                                modeller = list_res.json().get('models', [])
+                                
+                                # Görsel okuyabilen modelleri filtrele
+                                uygun_modeller = [m['name'] for m in modeller if 'generateContent' in m.get('supportedGenerationMethods', []) and ('1.5' in m['name'] or '2.0' in m['name'] or 'vision' in m['name'])]
+                                
+                                # Görseli Google formatına çevir
                                 buffered = io.BytesIO()
                                 islem_goren_resim.save(buffered, format="JPEG")
                                 final_img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
                                 
-                                # KÜTÜPHANE YOK! DOĞRUDAN GOOGLE REST API BAĞLANTISI (Asla çökmez)
-                                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-                                gemini_payload = {
-                                    "contents": [{
-                                        "parts": [
-                                            {"text": prompt},
-                                            {"inline_data": {"mime_type": "image/jpeg", "data": final_img_b64}}
-                                        ]
-                                    }]
-                                }
+                                basarili_sonuc = None
+                                hata_raporu = []
+                                calisan_motor = ""
                                 
-                                response = requests.post(gemini_url, json=gemini_payload)
+                                # 2. BULUNAN MODELLERİ TEK TEK DENE
+                                for model_adi in uygun_modeller:
+                                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/{model_adi}:generateContent?key={GEMINI_API_KEY}"
+                                    gemini_payload = {
+                                        "contents": [{
+                                            "parts": [
+                                                {"text": prompt},
+                                                {"inline_data": {"mime_type": "image/jpeg", "data": final_img_b64}}
+                                            ]
+                                        }]
+                                    }
+                                    
+                                    res = requests.post(gemini_url, json=gemini_payload)
+                                    
+                                    if res.status_code == 200:
+                                        basarili_sonuc = res.json()['candidates'][0]['content']['parts'][0]['text']
+                                        calisan_motor = model_adi.replace("models/", "")
+                                        break # Başarılı olduysa döngüden çık!
+                                    elif res.status_code == 429:
+                                        hata_raporu.append(f"{model_adi.replace('models/', '')}: Ücretsiz Kota Yok (Limit: 0)")
+                                    else:
+                                        hata_raporu.append(f"{model_adi.replace('models/', '')}: {res.status_code} Hatası")
                                 
-                                if response.status_code == 200:
-                                    sonuc_metni = response.json()['candidates'][0]['content']['parts'][0]['text']
-                                    st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Ton:** {ton}")
-                                    st.write(sonuc_metni)
+                                # 3. SONUCU EKRANA BAS
+                                if basarili_sonuc:
+                                    st.success(f"**Platform:** {platform} | **Dil:** {dil} | **Motor:** {calisan_motor}")
+                                    st.write(basarili_sonuc)
+                                    st.balloons()
                                 else:
-                                    st.error(f"Google API Hatası: {response.text}")
+                                    st.error("🚨 Google Tüm Kapıları Kapattı!")
+                                    for hata in hata_raporu:
+                                        st.write(f"- {hata}")
+                                    st.info("💡 ÇÖZÜM: Google sizin API anahtarınızda ücretsiz kullanımı (Free Tier) tamamen durdurmuş. Lütfen FARKLI BİR GMAIL HESABI ile Google AI Studio'ya girip yeni bir API anahtarı alın.")
                                 
                                 time.sleep(2) 
                             except Exception as e:
                                 st.error(f"Sistem Hatası: {e}")
-                                
-            st.balloons()
