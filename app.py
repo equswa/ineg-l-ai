@@ -39,14 +39,13 @@ with col_controls:
     st.write("---")
     st.subheader("2. Satış ve İhracat Stratejisi 🎯")
     
-    # İHRACATA ÖZEL SEÇENEKLER
     hedef = st.radio("Pazarlama Kanalı", [
         "🤝 B2B İhracat E-Postası (Yurtdışı Toptancılara)",
         "🛒 E-Ticaret (Etsy, Wayfair, Amazon Listing)", 
         "📱 Yurtdışı Sosyal Medya Reklamı"
     ])
     
-    dil = st.selectbox("Hedef Ülke Dili", ["İngilizce (Global)", "Almanca (Avrupa)", "Arapça (Ortadoğu)", "Fransızca", "Rusça"])
+    dil = st.selectbox("Hedef Ülke Dili", ["İngilizce (Global)", "Almanca (Avrupa)", "Arapça (Ortadoğu)", "Fransızca", "Rusça", "Türkçe"])
     ton = st.selectbox("İletişim Tonu", ["Profesyonel & Kurumsal (Güven Verici)", "Lüks & Premium (Yüksek Fiyatlı)", "Agresif Satış (İkna Edici)"])
 
     st.write("")
@@ -59,7 +58,6 @@ with col_outputs:
         if not uploaded_files:
             st.warning("⚠️ Lütfen önce ürün fotoğrafı yükleyin.")
         else:
-            # Stratejiye Göre Zekayı Yönlendirme (Prompt Engineering)
             if "B2B" in hedef:
                 prompt = f"""Sen üst düzey bir İhracat Müdürüsün. Ekteki mobilya fotoğrafını incele. 
                 Bu ürünün Türkiye'deki doğrudan üreticisi (fabrikası) olduğumuzu belirterek, hedef dildeki büyük bir mobilya distribütörüne toptan satış yapmak için resmi, ikna edici ve profesyonel bir B2B e-posta (Cold Email) yaz.
@@ -108,34 +106,43 @@ with col_outputs:
                             st.image(islem_goren_resim, caption="Orijinal Görsel", use_container_width=True)
                             
                     with col_txt:
-                        with st.spinner('Satış Metni Hazırlanıyor...'):
+                        with st.spinner('Google Güvenlik Duvarı Aşılıyor...'):
                             try:
-                                # DOĞRUDAN GOOGLE REST API (Kesintisiz Bağlantı)
+                                # YENİLMEZ KAPI KIRICI SİSTEM BURAYA EKLENDİ
+                                list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}"
+                                list_res = requests.get(list_url)
+                                modeller = list_res.json().get('models', [])
+                                uygun_modeller = [m['name'] for m in modeller if 'generateContent' in m.get('supportedGenerationMethods', []) and ('1.5' in m['name'] or '2.0' in m['name'] or 'vision' in m['name'])]
+                                
                                 buffered = io.BytesIO()
                                 islem_goren_resim.save(buffered, format="JPEG")
                                 final_img_b64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
                                 
-                                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-                                gemini_payload = {
-                                    "contents": [{
-                                        "parts": [
-                                            {"text": prompt},
-                                            {"inline_data": {"mime_type": "image/jpeg", "data": final_img_b64}}
-                                        ]
-                                    }]
-                                }
+                                basarili_sonuc = None
                                 
-                                res = requests.post(gemini_url, json=gemini_payload)
-                                
-                                if res.status_code == 200:
-                                    sonuc_metni = res.json()['candidates'][0]['content']['parts'][0]['text']
-                                    st.info(f"**Pazar:** {dil} | **Kanal:** {hedef.split(' ')[1]} | **Ton:** {ton}")
-                                    st.markdown(sonuc_metni)
+                                for model_adi in uygun_modeller:
+                                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/{model_adi}:generateContent?key={GEMINI_API_KEY}"
+                                    gemini_payload = {
+                                        "contents": [{
+                                            "parts": [
+                                                {"text": prompt},
+                                                {"inline_data": {"mime_type": "image/jpeg", "data": final_img_b64}}
+                                            ]
+                                        }]
+                                    }
                                     
-                                    # Profesyonel Kopyalama Butonu Hissi
-                                    st.button("📋 Metni Kopyala", key=f"copy_{i}", help="Müşteriye veya platforma yapıştırmak için kopyalayın.")
+                                    res = requests.post(gemini_url, json=gemini_payload)
+                                    
+                                    if res.status_code == 200:
+                                        basarili_sonuc = res.json()['candidates'][0]['content']['parts'][0]['text']
+                                        break
+                                
+                                if basarili_sonuc:
+                                    st.info(f"**Pazar:** {dil} | **Kanal:** {hedef.split(' ')[1]} | **Ton:** {ton}")
+                                    st.markdown(basarili_sonuc)
+                                    st.button("📋 Metni Kopyala", key=f"copy_{i}")
                                 else:
-                                    st.error("Google API Bağlantı Hatası.")
+                                    st.error("Google'ın tüm modelleri yanıt vermeyi reddetti. Kotanız dolmuş olabilir.")
                                 
                                 time.sleep(2) 
                             except Exception as e:
